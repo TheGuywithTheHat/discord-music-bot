@@ -1,0 +1,18 @@
+{
+  "name": "music-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "RTC",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "discord.js": "^11.4.2",
+    "googleapis": "^35.0.0",
+    "libsodium-wrappers": "^0.7.3",
+    "node-opus": "^0.3.1",
+    "ytdl-core": "^0.28.0"
+  }
+}
