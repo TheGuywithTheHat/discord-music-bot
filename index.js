@@ -39,7 +39,7 @@ var queue = {
 
 client.on('ready', () => {
     console.log('I am ready!');
-    channel = client.channels.get(config.command_channel_test);
+    channel = client.channels.get(config.command_channel);
     join();
 });
 
