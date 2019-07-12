@@ -1,0 +1,7 @@
+{
+    "user_token": "discord bot user token",
+    "google_key": "google API key",
+    "music_channel": "voice channel id to play music in",
+    "command_channel": "text channel to send music messages to",
+    "command_channel_test": "testing channel, you can ignore"
+}

@@ -9,7 +9,7 @@ const client = new Discord.Client();
 
 var channel;
 var voiceConnection;
-var dispatcher;
+var dispatcher = { end(){ playNext(); }, pause(){}, resume(){}};
 
 var queue = {
     q: [],
@@ -17,37 +17,29 @@ var queue = {
     add(q) {
         console.log('add ' + q);
         this.q.push(q);
-        if (this.current === null) {
+        if (this.current == null) {
             playNext();
         }
     },
-    next() {
+    getNext() {
         console.log('next');
-        this.current = this.q.shift();
-        return this.current;
+        return this.q.shift();
     },
-    stop(q) {
-        console.log('stop');
-        if (!q) {
-            this.q = []
-        } else {
-            this.q = q;
-        }
-        this.current = null;
+    clear() {
+        this.q = [];
     },
     override(q) {
-        console.log('override ' + q);
-        if (this.current) {
+        if (this.current != null) {
             this.q.unshift(this.current);
         }
         this.q.unshift(q);
-        playNext();
+        end();
     },
 }
 
 client.on('ready', () => {
     console.log('I am ready!');
-    channel = client.channels.get(config.command_channel);
+    channel = client.channels.get(config.command_channel_test);
     join();
 });
 
@@ -60,30 +52,38 @@ function respond(message) {
 
     if (message.content == '!pause') {
         pause();
-    } else if (message.content == '!play') {
+    } else if (message.content in ['!play', '!paly']) {
         resume();
     } else if (message.content == '!stop') {
         stop();
+    } else if (message.content == '!reset') {
+        if (queue.current != null) {
+            queue.q.unshift(queue.current);
+        }
+        client.channels.get(config.music_channel).leave();
+        join(playNext);
     } else if (message.content == '!next') {
-        try {
-            dispatcher.end();
-        } catch (err) {}
+        end();
     } else if (message.content == '!q') {
         channel.send('"' + queue.q.join('", "') + '"');
     } else if (alexa) {
         queue.override(alexa[1]);
-    } else if (message.content.startsWith('!play ')) {
+    } else if (message.content.startsWith('!play ') || message.content.startsWith('!paly ')) {
         queue.override(message.content.substring(6));
     } else if (message.content.startsWith('!q ')) {
         queue.add(message.content.substring(3));
     }
 }
 
-function join() {
+function join(cb) {
     client.channels.get(config.music_channel).join()
         .then(vc => {
+            vc.on('error', (err) => {
+                console.log(err);
+            });
             console.log('joined');
             voiceConnection = vc;
+            if (cb) cb();
         }).catch(console.error);
 }
 
@@ -92,8 +92,8 @@ function playNext() {
     if (queue.q.length == 0) {
         return;
     }
-    search(queue.next(), (err, res) => {
-        if (err) console.error(err);
+    search(queue.getNext(), (err, res) => {
+        if (err) console.log(err);
         
         if(res.data.items.length === 0) {
             channel.send('No results found for "' + q + '"');
@@ -115,33 +115,37 @@ function search(str, cb) {
 }
 
 function stream(url) {
-    /*try {
-        dispatcher.end();
-    } catch (err) {}*/
-    var stream = ytdl(url, { filter : 'audioonly' });
-    dispatcher = voiceConnection.playStream(stream, { volume: 0.01 });
+    var stream = ytdl(url, { filter: 'audioonly', highWaterMark: 1<<25 });
+    queue.current = url;
+    dispatcher = voiceConnection.playStream(stream, { volume: 0.1 });
     dispatcher.on('end', () => {
         console.log('nat end');
         queue.current = null;
+        dispatcher = { end(){ playNext(); }, pause(){}, resume(){} };
         playNext();
     });
+    dispatcher.on('error', err => console.log(err));
 }
 
 function stop() {
-    try {
-        dispatcher.end();
-    } catch (err) {}
-    queue.stop();
+    queue.clear();
+    end();
 }
 
 function resume() {
     try {
         dispatcher.resume();
-    } catch (err) {}
+    } catch (err) { console.log(err); }
 }
 
 function pause() {
     try {
         dispatcher.pause();
-    } catch (err) {}
+    } catch (err) { console.log(err); }
+}
+
+function end() {
+    try {
+        dispatcher.end();
+    } catch (err) { console.log(err); }
 }
