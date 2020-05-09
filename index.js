@@ -37,16 +37,16 @@ var queue = {
     },
 }
 
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log('I am ready!');
-    channel = client.channels.get(config.command_channel);
-    join();
+    channel = await client.channels.fetch(config.command_channel);
+    await join();
 });
 
 client.on('message', respond);
 client.login(config.user_token);
 
-function respond(message) {
+async function respond(message) {
     console.log(message.content);
     var alexa = /this is so sad alexa play (.*)/i.exec(message.content);
 
@@ -60,8 +60,9 @@ function respond(message) {
         if (queue.current != null) {
             queue.q.unshift(queue.current);
         }
-        client.channels.get(config.music_channel).leave();
-        join(playNext);
+        (await client.channels.fetch(config.music_channel)).leave();
+        await join();
+        playNext();
     } else if (message.content == '!next') {
         end();
     } else if (message.content == '!q') {
@@ -75,19 +76,13 @@ function respond(message) {
     }
 }
 
-function join(cb) {
-    client.channels.get(config.music_channel).join()
-        .then(vc => {
-            vc.on('error', (err) => {
-                console.log(err);
-            });
-            console.log('joined');
-            voiceConnection = vc;
-            if (cb) cb();
-        }).catch(console.error);
+async function join() {
+    let channel = await client.channels.fetch(config.music_channel);
+    voiceConnection = await channel.join();
+    console.log('joined');
 }
 
-function playNext() {
+async function playNext() {
     console.log('attempting next');
     if (queue.q.length == 0) {
         return;
@@ -117,7 +112,7 @@ function search(str, cb) {
 function stream(url) {
     var stream = ytdl(url, { filter: 'audioonly', highWaterMark: 1<<25 });
     queue.current = url;
-    dispatcher = voiceConnection.playStream(stream, { volume: 0.1 });
+    dispatcher = voiceConnection.play(stream, { volume: 0.1 });
     dispatcher.on('end', () => {
         console.log('nat end');
         queue.current = null;

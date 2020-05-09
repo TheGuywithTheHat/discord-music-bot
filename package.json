@@ -9,10 +9,10 @@
   "author": "RTC",
   "license": "UNLICENSED",
   "dependencies": {
-    "discord.js": "^11.5.1",
-    "googleapis": "^41.0.0",
-    "libsodium-wrappers": "^0.7.4",
-    "node-opus": "^0.3.2",
-    "ytdl-core": "^0.29.3"
+    "@discordjs/opus": "^0.3.2",
+    "discord.js": "^12.2.0",
+    "googleapis": "^50.0.0",
+    "libsodium-wrappers": "^0.7.6",
+    "ytdl-core": "^2.1.2"
   }
 }
