@@ -87,11 +87,12 @@ async function playNext() {
     if (queue.q.length == 0) {
         return;
     }
-    search(queue.getNext(), (err, res) => {
+    let query = queue.getNext();
+    search(query, (err, res) => {
         if (err) console.log(err);
         
         if(res.data.items.length === 0) {
-            channel.send('No results found for "' + q + '"');
+            channel.send('No results found for "' + query + '"');
         } else {
             url = 'https://www.youtube.com/watch?v=' + res.data.items[0].id.videoId;
             stream(url);
@@ -113,7 +114,7 @@ function stream(url) {
     var stream = ytdl(url, { filter: 'audioonly', highWaterMark: 1<<25 });
     queue.current = url;
     dispatcher = voiceConnection.play(stream, { volume: 0.1 });
-    dispatcher.on('end', () => {
+    dispatcher.on('finish', () => {
         console.log('nat end');
         queue.current = null;
         dispatcher = { end(){ playNext(); }, pause(){}, resume(){} };
@@ -144,3 +145,4 @@ function end() {
         dispatcher.end();
     } catch (err) { console.log(err); }
 }
+
