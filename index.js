@@ -29,9 +29,9 @@ var queue = {
         this.q = [];
     },
     override(q) {
-        if (this.current != null) {
-            this.q.unshift(this.current);
-        }
+        //if (this.current != null) {
+        //    this.q.unshift(this.current);
+        //}
         this.q.unshift(q);
         end();
     },
@@ -88,31 +88,62 @@ async function playNext() {
         return;
     }
     let query = queue.getNext();
-    search(query, (err, res) => {
-        if (err) console.log(err);
-        
-        if(res.data.items.length === 0) {
-            channel.send('No results found for "' + query + '"');
-        } else {
-            url = 'https://www.youtube.com/watch?v=' + res.data.items[0].id.videoId;
-            stream(url);
-            channel.send('Now playing: ' + url);
+    try {
+        playStream(await getStream(query));
+        queue.current = query;
+    } catch(err) {
+        console.error(err);
+    }
+   });
+}
+
+async function getStream(query) {
+    if(/^\<?https?:\/\/.*/.test(query)) {
+        if(/^\<?https?:\/\/(youtube\.com|youtu\.be)/.test(query)) {
+            return youtubeStream(url);
+        } else if(/\.mp3$/.test(query)) {
+            return (await fetch(query)).body;
         }
+    }
+
+    let url = await search(query);
+    if(url) {
+        return youtubeStream(url));
+    } else {
+        return null;
+    }
+}
+
+async function search(str) {
+    let res = await new Promise((resolve, reject) => {
+        youtube.search.list({
+            type: 'video',
+            q: str,
+            maxResults: 1,
+            part: 'snippet',
+        }, (err, res) => {
+            if(err) {
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        });
     });
+    if(res.data.items.length === 0) {
+        channel.send('No results found for "' + query + '"');
+        return null;
+    } else {
+        url = 'https://www.youtube.com/watch?v=' + res.data.items[0].id.videoId;
+        return url;
+    }
 }
 
-function search(str, cb) {
-    youtube.search.list({
-        type: 'video',
-        q: str,
-        maxResults: 1,
-        part: 'snippet',
-    }, (err, res) => { cb(err, res); });
+function youtubeStream(url) {
+    channel.send('Now playing: ' + url);
+    return ytdl(url, { filter: 'audioonly', highWaterMark: 1<<25 });
 }
 
-function stream(url) {
-    var stream = ytdl(url, { filter: 'audioonly', highWaterMark: 1<<25 });
-    queue.current = url;
+function playStream(stream) {
     dispatcher = voiceConnection.play(stream, { volume: 0.1 });
     dispatcher.on('finish', () => {
         console.log('nat end');
